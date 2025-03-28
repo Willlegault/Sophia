@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import Calendar from './pages/Calendar';
+import Resources from './pages/Resources';
 
 // Protected route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ function App() {
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       {/* TODO: Remove this test route before deployment - use for testing dashboard without authentication */}
       <Route path="/testdashboard" element={<Dashboard />} />
+      <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
     </Routes>
   );
 }

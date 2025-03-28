@@ -1,5 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
+import SophiaLogo from '@/images/Sophia_Logo.png';
 
 export default function Header() {
     const { user } = useAuth();
@@ -11,17 +12,25 @@ export default function Header() {
     };
 
     const linkStyle = (path: string) => {
-        return `text-white px-3 py-1 rounded transition-colors ${
+        return `text-[#1E1E1E] px-3 py-1 rounded transition-colors ${
             isActive(path) 
-                ? 'bg-[#834D4D]' 
-                : 'hover:text-gray-200'
+                ? 'bg-[#834D4D] text-white' 
+                : 'hover:text-gray-600'
         }`;
     };
 
     return (
         <header style={{ backgroundColor: '#5E503F' }} className="p-4">
-            <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
-                <h1 className="text-white text-2xl font-bold">Health Tracker</h1>
+            <div className="flex justify-between items-center">
+                <div className="flex-1">
+                    <img 
+                        src={SophiaLogo} 
+                        alt="Sophia Logo" 
+                        className="h-12 ml-2"
+                        onClick={() => navigate('/')}
+                        style={{ cursor: 'pointer' }}
+                    />
+                </div>
                 
                 <div className="flex items-center space-x-6">
                     <button 
@@ -54,13 +63,13 @@ export default function Header() {
                         <div className="flex items-center space-x-4">
                             <button 
                                 onClick={() => navigate('/login')}
-                                className="text-white hover:text-gray-200"
+                                className="text-[#1E1E1E] hover:text-gray-600"
                             >
                                 Login
                             </button>
                             <button 
                                 onClick={() => navigate('/register')}
-                                className="text-white hover:text-gray-200 border border-white px-3 py-1 rounded"
+                                className="text-[#1E1E1E] hover:text-gray-600 border border-[#1E1E1E] px-3 py-1 rounded"
                             >
                                 Register
                             </button>

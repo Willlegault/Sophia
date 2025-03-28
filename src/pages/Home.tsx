@@ -185,6 +185,14 @@ export default function Home() {
     }
   };
 
+  // Modify to handle local state changes without saving
+  const handleInputChange = (promptId: string, content: string) => {
+    setEntries(prev => ({
+      ...prev,
+      [promptId]: content
+    }));
+  };
+
   return (
     <div className="min-h-svh" style={{ backgroundColor: '#BAA68E' }}>
       <Header />
@@ -252,7 +260,7 @@ export default function Home() {
                     rows={4}
                     placeholder="Write your thoughts here..."
                     value={entries[prompt.id] || ''}
-                    onChange={(e) => handleSaveEntry(prompt.id, e.target.value)}
+                    onChange={(e) => handleInputChange(prompt.id, e.target.value)}
                   />
                   <div className="flex justify-end">
                     <button
