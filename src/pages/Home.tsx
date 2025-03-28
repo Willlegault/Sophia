@@ -160,6 +160,83 @@ export default function Home() {
   return (
     <div className="min-h-svh" style={{ backgroundColor: '#BAA68E' }}>
       <Header />
+      <div className="flex">
+        {/* History Sidebar */}
+        <div className="w-80 bg-white h-[calc(100vh-4rem)] overflow-y-auto shadow-lg">
+          <div className="p-4 border-b">
+            <h2 className="text-xl font-semibold text-gray-800">Journal History</h2>
+          </div>
+          
+          {user ? (
+            historicalEntries.length > 0 ? (
+              <div className="divide-y">
+                {historicalEntries.map((entry) => (
+                  <div key={entry.id} className="p-4 hover:bg-gray-50">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-medium text-gray-800">
+                        {entry.prompt.title}
+                      </h3>
+                      <span className="text-sm text-gray-500">
+                        {new Date(entry.entry_date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {entry.content}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-gray-500 text-center">
+                No journal entries yet
+              </div>
+            )
+          ) : (
+            <div className="p-4 text-gray-500 text-center">
+              Please login to view your journal history
+            </div>
+          )}
+        </div>
+
+        {/* Main Content */}
+        <main className="flex-1 p-8">
+          <h2 className="text-2xl font-bold text-white mb-6">Daily Journal</h2>
+          
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="text-white">Loading prompts...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {prompts.map((prompt) => (
+                <div 
+                  key={prompt.id}
+                  className="bg-white rounded-lg shadow-lg p-6"
+                >
+                  <h3 className="text-lg font-semibold mb-2">{prompt.title}</h3>
+                  <p className="text-gray-600 mb-4">{prompt.description}</p>
+                  <textarea
+                    className="w-full p-3 border rounded-lg mb-2"
+                    rows={4}
+                    placeholder="Write your thoughts here..."
+                    value={entries[prompt.id] || ''}
+                    onChange={(e) => handleSaveEntry(prompt.id, e.target.value)}
+                  />
+                  {!user && (
+                    <p className="text-sm text-gray-500">
+                      Please login to save your journal entries
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
