@@ -35,6 +35,30 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [historicalEntries, setHistoricalEntries] = useState<HistoricalEntry[]>([]);
 
+  const fetchHistory = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .select(`
+          *,
+          prompt:prompts (
+            title,
+            description
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('entry_date', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setHistoricalEntries(data || []);
+    } catch (err) {
+      console.error('Error fetching history:', err);
+    }
+  };
+
   // Fetch prompts and existing entries
   useEffect(() => {
     async function fetchData() {
@@ -76,32 +100,7 @@ export default function Home() {
     fetchData();
   }, [user]);
 
-  // Add this new effect for fetching historical entries
   useEffect(() => {
-    async function fetchHistory() {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('journal_entries')
-          .select(`
-            *,
-            prompt:prompts (
-              title,
-              description
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('entry_date', { ascending: false })
-          .limit(10);
-
-        if (error) throw error;
-        setHistoricalEntries(data || []);
-      } catch (err) {
-        console.error('Error fetching history:', err);
-      }
-    }
-
     fetchHistory();
   }, [user]);
 
@@ -153,6 +152,35 @@ export default function Home() {
       }));
     } catch (err) {
       setError('Error saving entry');
+      console.error(err);
+    }
+  };
+
+  const handleSubmitEntry = async (promptId: string) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const content = entries[promptId];
+      if (!content || content.trim() === '') {
+        setError('Please write something before submitting');
+        return;
+      }
+
+      await handleSaveEntry(promptId, content);
+      
+      // Clear the entry after submission
+      setEntries(prev => ({
+        ...prev,
+        [promptId]: ''
+      }));
+
+      // Refresh historical entries
+      fetchHistory();
+    } catch (err) {
+      setError('Error submitting entry');
       console.error(err);
     }
   };
@@ -220,14 +248,22 @@ export default function Home() {
                   <h3 className="text-lg font-semibold mb-2">{prompt.title}</h3>
                   <p className="text-gray-600 mb-4">{prompt.description}</p>
                   <textarea
-                    className="w-full p-3 border rounded-lg mb-2"
+                    className="w-full p-3 border rounded-lg mb-4"
                     rows={4}
                     placeholder="Write your thoughts here..."
                     value={entries[prompt.id] || ''}
                     onChange={(e) => handleSaveEntry(prompt.id, e.target.value)}
                   />
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => handleSubmitEntry(prompt.id)}
+                      className="bg-[#834D4D] text-white px-4 py-2 rounded hover:bg-[#733D3D] transition-colors"
+                    >
+                      Submit Entry
+                    </button>
+                  </div>
                   {!user && (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 mt-2">
                       Please login to save your journal entries
                     </p>
                   )}
