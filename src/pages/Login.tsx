@@ -36,13 +36,10 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-svh bg-gray-100">
-      <Card className="w-[350px]">
-        <CardHeader>
-          <CardTitle>Login</CardTitle>
-          <CardDescription>Enter your email and password to log in</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="min-h-svh" style={{ backgroundColor: '#BAA68E' }}>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md mx-4">
+          <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">Email</label>
@@ -76,16 +73,16 @@ export default function Login() {
               {loading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-600">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-blue-600 hover:underline">
-              Register
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
+          <CardFooter className="flex justify-center mt-4">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <Link to="/register" className="text-blue-600 hover:underline">
+                Register
+              </Link>
+            </p>
+          </CardFooter>
+        </div>
+      </div>
     </div>
   );
 }
