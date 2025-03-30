@@ -229,7 +229,21 @@ export default function Home() {
       }
 
       const today = new Date().toISOString().split('T')[0];
-      let newStreakCount = streakInfo.current_streak;
+      let newStreakCount = 1; // Default for new streaks
+
+      if (streakInfo.last_entry_date) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (streakInfo.last_entry_date === today) {
+          // Already journaled today, keep current streak
+          newStreakCount = streakInfo.current_streak;
+        } else if (new Date(streakInfo.last_entry_date).toISOString().split('T')[0] === 
+                  yesterday.toISOString().split('T')[0]) {
+          // Journaled yesterday, increment streak
+          newStreakCount = streakInfo.current_streak + 1;
+        }
+      }
 
       // Check for existing entry today
       const { data: existingEntry, error: checkError } = await supabase
@@ -240,30 +254,26 @@ export default function Home() {
         .eq('entry_date', today)
         .single();
 
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
+      if (checkError && checkError.code !== 'PGRST116') {
         throw checkError;
       }
 
       let updatedEntry;
       
       if (existingEntry?.id) {
-        // Update existing entry
         const { data, error: updateError } = await supabase
           .from('journal_entries')
           .update({
-            content: content.trim()
+            content: content.trim(),
+            streak_count: existingEntry.streak_count // Keep existing streak
           })
           .eq('id', existingEntry.id)
           .select()
           .single();
           
-        if (updateError) {
-          console.error('Update error:', updateError);
-          throw updateError;
-        }
+        if (updateError) throw updateError;
         updatedEntry = data;
       } else {
-        // Create new entry
         const { data, error: insertError } = await supabase
           .from('journal_entries')
           .insert([{
@@ -271,16 +281,19 @@ export default function Home() {
             prompt_id: promptId,
             content: content.trim(),
             entry_date: today,
-            streak_count: newStreakCount
+            streak_count: newStreakCount // Use new streak count for new entries
           }])
           .select()
           .single();
           
-        if (insertError) {
-          console.error('Insert error:', insertError);
-          throw insertError;
-        }
+        if (insertError) throw insertError;
         updatedEntry = data;
+
+        // Update streak info for new entries
+        setStreakInfo({
+          current_streak: newStreakCount,
+          last_entry_date: today
+        });
       }
 
       // Update historical entries immediately
