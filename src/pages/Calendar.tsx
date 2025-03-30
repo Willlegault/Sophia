@@ -5,46 +5,66 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
-type CalendarEvent = {
-    title: string; // Title of the event
-    date: string; // Date of the event in 'YYYY-MM-DD' format
-};
-
+interface JournalEntry {
+  id: string;
+  content: string;
+  entry_date: string;
+  prompt: {
+    title: string;
+    description: string;
+  }
+}
 
 export default function Calendar() {
     const { user } = useAuth();
-    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // State to hold calendar events
+    const [entries, setEntries] = useState<JournalEntry[]>([]);
 
     useEffect(() => {
-        const fetchData = async () => {
-            if (!user) {
-                console.error("User not authenticated");
-                return;
+        const fetchEntries = async () => {
+            if (!user) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('journal_entries')
+                    .select(`
+                        id,
+                        content,
+                        entry_date,
+                        prompt:prompts (
+                            title,
+                            description
+                        )
+                    `)
+                    .eq('user_id', user.id);
+
+                if (error) throw error;
+                setEntries(data || []);
+            } catch (err) {
+                console.error('Error fetching entries:', err);
             }
-            // Fetch journal entries from Supabase
-            const { data: entries, error } = await supabase
-                .from('journal_entries')
-                .select('*')
-                .eq('user_id', user.id);
+        };
 
-            if (error) {
-                console.error("Error fetching journal entries:", error);
-                return;
-            }
+        fetchEntries();
+    }, [user]);
 
-            // Process entries to fit FullCalendar format
-            const events = entries.map(entry => ({
-                title: entry.title, // Assuming you have a title field in your journal entries
-                date: entry.entry_date // Assuming you have an entry_date field in your journal entries
-            }));
+    const tileContent = ({ date }: { date: Date }) => {
+        const dateStr = date.toISOString().split('T')[0];
+        const dayEntries = entries.filter(entry => entry.entry_date === dateStr);
 
-            setCalendarEvents(events)
+        if (dayEntries.length === 0) return null;
 
-            // Here you can set the state for calendar events if needed
-        }
+        return (
+            <div className="text-xs p-1 overflow-hidden">
+                {dayEntries.map(entry => (
+                    <div key={entry.id} className="mb-1">
+                        <div className="font-semibold text-[#735454]">{entry.prompt.title}</div>
+                        <div className="truncate text-gray-600">{entry.content}</div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
-        fetchData();
-}, [])
     return (
         <div className="min-h-svh" style={{ backgroundColor: '#BAA68E' }}>
             <Header />
@@ -54,7 +74,11 @@ export default function Calendar() {
             <FullCalendar
                 plugins={[ dayGridPlugin ]}
                 initialView="dayGridMonth"
-                events={calendarEvents}
+                events={entries.map(entry => ({
+                    title: entry.prompt.title,
+                    date: entry.entry_date
+                }))}
+                dateCellContent={tileContent}
                 />
         </div>
     )
