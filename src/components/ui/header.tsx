@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import SophiaLogo from '@/images/Sophia_Logo.png';
 
 export default function Header() {
-    const { user } = useAuth();
+    const { user, signOut } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     
@@ -17,6 +17,15 @@ export default function Header() {
                 ? 'bg-[#834D4D] text-white' 
                 : 'hover:text-gray-600'
         }`;
+    };
+
+    const handleLogout = async () => {
+        try {
+            await signOut();
+            navigate('/login');
+        } catch (error) {
+            console.error('Error signing out:', error);
+        }
     };
 
     return (
@@ -74,6 +83,15 @@ export default function Header() {
                                 Register
                             </button>
                         </div>
+                    )}
+
+                    {user && (
+                        <button 
+                            onClick={handleLogout}
+                            className="bg-[#735454] text-white hover:bg-[#634545] px-3 py-1 rounded transition-colors"
+                        >
+                            Logout
+                        </button>
                     )}
                 </div>
             </div>
