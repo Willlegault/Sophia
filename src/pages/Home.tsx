@@ -43,6 +43,7 @@ export default function Home() {
     current_streak: 0,
     last_entry_date: null
   });
+  const [selectedEntry, setSelectedEntry] = useState<HistoricalEntry | null>(null);
 
   const fetchHistory = async () => {
     if (!user) return;
@@ -322,6 +323,32 @@ export default function Home() {
     }));
   };
 
+  const EntryDisplay = ({ entry, onBack }: { 
+    entry: HistoricalEntry; 
+    onBack: () => void;
+  }) => {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-semibold text-[#5E503F]">{entry.prompt.title}</h2>
+          <button
+            onClick={onBack}
+            className="bg-[#834D4D] text-white px-4 py-2 rounded hover:bg-[#733D3D] transition-colors"
+          >
+            Back to Journal
+          </button>
+        </div>
+        <p className="text-gray-600 mb-6">{entry.prompt.description}</p>
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <p className="text-gray-800 whitespace-pre-wrap">{entry.content}</p>
+        </div>
+        <div className="mt-4 text-sm text-gray-500 text-right">
+          {new Date(entry.entry_date).toLocaleDateString()}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-svh" style={{ backgroundColor: '#BAA68E' }}>
       <Header />
@@ -340,7 +367,10 @@ export default function Home() {
             historicalEntries.length > 0 ? (
               <div className="divide-y">
                 {historicalEntries.map((entry) => (
-                  <div key={entry.id} className="p-4 hover:bg-gray-50">
+                  <div key={entry.id} 
+                    className="p-4 hover:bg-gray-50 cursor-pointer" 
+                    onClick={() => setSelectedEntry(entry)}
+                  >
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-medium text-gray-800">
                         {entry.prompt.title}
@@ -370,7 +400,9 @@ export default function Home() {
         {/* Main Content */}
         <main className="flex-1 p-8">
           <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-2xl font-bold text-white">Daily Journal</h2>
+            <h2 className="text-2xl font-bold text-white">
+              {selectedEntry ? 'Journal Entry' : 'Daily Journal'}
+            </h2>
             {error && (
               <div className={`inline-block px-4 py-2 rounded-lg shadow-md transition-opacity duration-300 ${
                 error === 'Entry saved successfully!' 
@@ -384,6 +416,11 @@ export default function Home() {
           
           {loading ? (
             <div className="text-white">Loading prompts...</div>
+          ) : selectedEntry ? (
+            <EntryDisplay 
+              entry={selectedEntry} 
+              onBack={() => setSelectedEntry(null)} 
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {prompts.map((prompt) => (
