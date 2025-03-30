@@ -25,6 +25,11 @@ interface HistoricalEntry extends JournalEntry {
   };
 }
 
+interface StreakInfo {
+  current_streak: number;
+  last_entry_date: string | null;
+}
+
 export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +39,10 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [historicalEntries, setHistoricalEntries] = useState<HistoricalEntry[]>([]);
+  const [streakInfo, setStreakInfo] = useState<StreakInfo>({
+    current_streak: 0,
+    last_entry_date: null
+  });
 
   const fetchHistory = async () => {
     if (!user) return;
@@ -104,7 +113,51 @@ export default function Home() {
     fetchHistory();
   }, [user]);
 
-  const handleSaveEntry = async (promptId: string, content: string) => {
+  // Add this function to calculate streak
+  const calculateStreak = async () => {
+    if (!user) return;
+    
+    try {
+      // Get the most recent entry
+      const { data: latestEntry, error: latestError } = await supabase
+        .from('journal_entries')
+        .select('entry_date, streak_count')
+        .eq('user_id', user.id)
+        .order('entry_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (latestError) throw latestError;
+
+      if (latestEntry) {
+        const lastEntryDate = new Date(latestEntry.entry_date);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // Format dates to compare just the date portion
+        const lastEntryStr = lastEntryDate.toISOString().split('T')[0];
+        const todayStr = today.toISOString().split('T')[0];
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        setStreakInfo({
+          current_streak: latestEntry.streak_count,
+          last_entry_date: lastEntryStr
+        });
+      }
+    } catch (err) {
+      console.error('Error calculating streak:', err);
+    }
+  };
+
+  // Add streak calculation to initial load
+  useEffect(() => {
+    if (user) {
+      calculateStreak();
+    }
+  }, [user]);
+
+  const handleSaveEntry = async (promptId: string, content: string, streakCount: number) => {
     if (!user) {
       navigate('/login');
       return;
@@ -126,7 +179,10 @@ export default function Home() {
         // Update existing entry
         const { error } = await supabase
           .from('journal_entries')
-          .update({ content })
+          .update({ 
+            content,
+            streak_count: streakCount 
+          })
           .eq('id', existingEntry.id);
 
         if (error) throw error;
@@ -139,7 +195,8 @@ export default function Home() {
               user_id: user.id,
               prompt_id: promptId,
               content,
-              entry_date: today
+              entry_date: today,
+              streak_count: streakCount
             }
           ]);
 
@@ -169,16 +226,102 @@ export default function Home() {
         return;
       }
 
-      await handleSaveEntry(promptId, content);
-      
-      // Clear the entry after submission
-      setEntries(prev => ({
-        ...prev,
-        [promptId]: ''
-      }));
+      const today = new Date().toISOString().split('T')[0];
+      let newStreakCount = 1; // Default to 1 for new streak
 
-      // Refresh historical entries
-      fetchHistory();
+      if (streakInfo.last_entry_date) {
+        const lastEntry = new Date(streakInfo.last_entry_date);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (streakInfo.last_entry_date === today) {
+          // Already journaled today, keep current streak
+          newStreakCount = streakInfo.current_streak;
+        } else if (new Date(streakInfo.last_entry_date).toISOString().split('T')[0] === 
+                  yesterday.toISOString().split('T')[0]) {
+          // Journaled yesterday, increment streak
+          newStreakCount = streakInfo.current_streak + 1;
+        }
+      }
+
+      // Get the prompt details for the history update
+      const prompt = prompts.find(p => p.id === promptId);
+      
+      // Check for existing entry today
+      const { data: existingEntry } = await supabase
+        .from('journal_entries')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('prompt_id', promptId)
+        .eq('entry_date', today)
+        .single();
+
+      let updatedEntry;
+      
+      if (existingEntry) {
+        // Update existing entry
+        const { data, error: updateError } = await supabase
+          .from('journal_entries')
+          .update({
+            content,
+            streak_count: newStreakCount
+          })
+          .eq('id', existingEntry.id)
+          .select()
+          .single();
+          
+        if (updateError) throw updateError;
+        updatedEntry = data;
+      } else {
+        // Create new entry
+        const { data, error: insertError } = await supabase
+          .from('journal_entries')
+          .insert([{
+            user_id: user.id,
+            prompt_id: promptId,
+            content,
+            entry_date: today,
+            streak_count: newStreakCount
+          }])
+          .select()
+          .single();
+          
+        if (insertError) throw insertError;
+        updatedEntry = data;
+      }
+
+      // Update streak info
+      setStreakInfo({
+        current_streak: newStreakCount,
+        last_entry_date: today
+      });
+
+      // Update historical entries immediately
+      setHistoricalEntries(prev => {
+        const newEntry = {
+          id: updatedEntry.id,
+          content,
+          prompt_id: promptId,
+          entry_date: today,
+          prompt: {
+            title: prompt?.title || '',
+            description: prompt?.description || ''
+          }
+        };
+
+        // Remove old entry for same prompt if it exists
+        const filtered = prev.filter(entry => 
+          !(entry.prompt_id === promptId && entry.entry_date === today)
+        );
+
+        // Add new entry at the beginning
+        return [newEntry, ...filtered];
+      });
+
+      // Show success message (optional)
+      setError('Entry saved successfully!');
+      setTimeout(() => setError(null), 3000);
+
     } catch (err) {
       setError('Error submitting entry');
       console.error(err);
@@ -199,8 +342,12 @@ export default function Home() {
       <div className="flex">
         {/* History Sidebar */}
         <div className="w-80 bg-white h-[calc(100vh-4rem)] overflow-y-auto shadow-lg">
-          <div className="p-4 border-b">
+          <div className="p-4 border-b flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-800">Journal History</h2>
+            <div className="flex items-center bg-[#834D4D] text-white px-3 py-1 rounded">
+              <span className="text-lg font-bold">{streakInfo.current_streak}</span>
+              <span className="ml-1 text-sm">day streak</span>
+            </div>
           </div>
           
           {user ? (
@@ -236,14 +383,15 @@ export default function Home() {
 
         {/* Main Content */}
         <main className="flex-1 p-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Daily Journal</h2>
+          <div className="flex items-center gap-4 mb-6">
+            <h2 className="text-2xl font-bold text-white">Daily Journal</h2>
+            {error && (
+              <div className="inline-block bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg shadow-md transition-opacity duration-300">
+                {error}
+              </div>
+            )}
+          </div>
           
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-
           {loading ? (
             <div className="text-white">Loading prompts...</div>
           ) : (
