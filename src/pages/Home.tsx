@@ -92,6 +92,7 @@ export default function Home() {
 
           if (entriesError) throw entriesError;
 
+          // Update entries state with today's entries
           const entriesMap: Record<string, string> = {};
           entriesData?.forEach((entry: JournalEntry) => {
             entriesMap[entry.prompt_id] = entry.content;
@@ -227,50 +228,38 @@ export default function Home() {
       }
 
       const today = new Date().toISOString().split('T')[0];
-      let newStreakCount = 1; // Default to 1 for new streak
+      let newStreakCount = streakInfo.current_streak;
 
-      if (streakInfo.last_entry_date) {
-        const lastEntry = new Date(streakInfo.last_entry_date);
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        if (streakInfo.last_entry_date === today) {
-          // Already journaled today, keep current streak
-          newStreakCount = streakInfo.current_streak;
-        } else if (new Date(streakInfo.last_entry_date).toISOString().split('T')[0] === 
-                  yesterday.toISOString().split('T')[0]) {
-          // Journaled yesterday, increment streak
-          newStreakCount = streakInfo.current_streak + 1;
-        }
-      }
-
-      // Get the prompt details for the history update
-      const prompt = prompts.find(p => p.id === promptId);
-      
       // Check for existing entry today
-      const { data: existingEntry } = await supabase
+      const { data: existingEntry, error: checkError } = await supabase
         .from('journal_entries')
-        .select('id')
+        .select('id, content, streak_count')
         .eq('user_id', user.id)
         .eq('prompt_id', promptId)
         .eq('entry_date', today)
         .single();
 
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
+        throw checkError;
+      }
+
       let updatedEntry;
       
-      if (existingEntry) {
+      if (existingEntry?.id) {
         // Update existing entry
         const { data, error: updateError } = await supabase
           .from('journal_entries')
           .update({
-            content,
-            streak_count: newStreakCount
+            content: content.trim()
           })
           .eq('id', existingEntry.id)
           .select()
           .single();
           
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Update error:', updateError);
+          throw updateError;
+        }
         updatedEntry = data;
       } else {
         // Create new entry
@@ -279,28 +268,26 @@ export default function Home() {
           .insert([{
             user_id: user.id,
             prompt_id: promptId,
-            content,
+            content: content.trim(),
             entry_date: today,
             streak_count: newStreakCount
           }])
           .select()
           .single();
           
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          throw insertError;
+        }
         updatedEntry = data;
       }
 
-      // Update streak info
-      setStreakInfo({
-        current_streak: newStreakCount,
-        last_entry_date: today
-      });
-
       // Update historical entries immediately
       setHistoricalEntries(prev => {
+        const prompt = prompts.find(p => p.id === promptId);
         const newEntry = {
           id: updatedEntry.id,
-          content,
+          content: content.trim(),
           prompt_id: promptId,
           entry_date: today,
           prompt: {
@@ -318,13 +305,12 @@ export default function Home() {
         return [newEntry, ...filtered];
       });
 
-      // Show success message (optional)
       setError('Entry saved successfully!');
       setTimeout(() => setError(null), 3000);
 
     } catch (err) {
+      console.error('Full error:', err);
       setError('Error submitting entry');
-      console.error(err);
     }
   };
 
