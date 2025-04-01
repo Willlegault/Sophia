@@ -74,11 +74,11 @@ export default function Calendar() {
             <FullCalendar
                 plugins={[ dayGridPlugin ]}
                 initialView="dayGridMonth"
-                events={entries.map(entry => ({
-                    title: entry.prompt.title,
-                    date: entry.entry_date
-                }))}
-                dateCellContent={tileContent}
+                // events={entries.map(entry => ({
+                //     title: entry.prompt.title,
+                //     date: entry.entry_date
+                // }))}
+                dayCellContent={tileContent}
                 />
         </div>
     )
