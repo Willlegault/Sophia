@@ -20,8 +20,8 @@ export default function Login() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (_: React.FormEvent) => {
+    _.preventDefault();
     setError('');
     setLoading(true);
     
