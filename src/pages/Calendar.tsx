@@ -1,6 +1,6 @@
 import Header from "@/components/ui/header";
 import FullCalendar from '@fullcalendar/react'
-import dayGridPlugin from '@fullcalendar/daygrid' // a plugin!
+import dayGridPlugin from '@fullcalendar/daygrid'
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -47,20 +47,23 @@ export default function Calendar() {
         fetchEntries();
     }, [user]);
 
-    const tileContent = ({ date }: { date: Date }) => {
-        const dateStr = date.toISOString().split('T')[0];
+    const dayCellContent = (arg: { date: Date, dayNumberText: string }) => {
+        const dateStr = arg.date.toISOString().split('T')[0];
         const dayEntries = entries.filter(entry => entry.entry_date === dateStr);
 
-        if (dayEntries.length === 0) return null;
-
         return (
-            <div className="text-xs p-1 overflow-hidden">
-                {dayEntries.map(entry => (
-                    <div key={entry.id} className="mb-1">
-                        <div className="font-semibold text-[#735454]">{entry.prompt.title}</div>
-                        <div className="truncate text-gray-600">{entry.content}</div>
+            <div className="h-full flex flex-col">
+                <div className="text-right font-semibold text-gray-800 p-1">{arg.dayNumberText}</div>
+                {dayEntries.length > 0 ? (
+                    <div className="flex-grow overflow-y-auto">
+                        {dayEntries.map(entry => (
+                            <div key={entry.id} className="text-xs p-1">
+                                <div className="font-semibold text-[#735454]">{entry.prompt.title}</div>
+                                <div className="truncate text-gray-600">{entry.content}</div>
+                            </div>
+                        ))}
                     </div>
-                ))}
+                ) : null}
             </div>
         );
     };
@@ -68,18 +71,20 @@ export default function Calendar() {
     return (
         <div className="min-h-svh" style={{ backgroundColor: '#BAA68E' }}>
             <Header />
-            {/* This is the Calendar page */}
-            <h1 className="text-black text-3xl font-bold text-center mt-10">Calendar Page</h1>
-            {/* You can add your calendar component here */}
-            <FullCalendar
-                plugins={[ dayGridPlugin ]}
-                initialView="dayGridMonth"
-                // events={entries.map(entry => ({
-                //     title: entry.prompt.title,
-                //     date: entry.entry_date
-                // }))}
-                dayCellContent={tileContent}
+            {/* <h1 className="text-white text-3xl font-bold text-center mt-10">Calendar Page</h1> */}
+            <div className="p-4">
+                <FullCalendar
+                    plugins={[dayGridPlugin]}
+                    initialView="dayGridMonth"
+                    dayCellContent={dayCellContent}
+                    headerToolbar={{
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,dayGridWeek'
+                    }}
+                    height="auto"
                 />
+            </div>
         </div>
     )
 }
