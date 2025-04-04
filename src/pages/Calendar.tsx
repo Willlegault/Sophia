@@ -21,7 +21,7 @@ export default function Calendar() {
 
     useEffect(() => {
         const fetchEntries = async () => {
-            if (!user || !user.id) return; // Ensure user and user.id exist
+            if (!user || !user.id) return;
 
             try {
                 const { data, error } = await supabase
@@ -55,7 +55,7 @@ export default function Calendar() {
     }, [user]);
 
     const dayCellContent = (arg: { date: Date, dayNumberText: string }) => {
-        const dateStr = arg.date.toISOString().split('T')[0];
+        const dateStr = arg.date.toISOString().split('T')[0];      // consider universal date format
         const dayEntries = entries.filter(entry => entry.entry_date === dateStr);
 
         return (

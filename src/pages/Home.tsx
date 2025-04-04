@@ -37,7 +37,7 @@ export default function Home() {
   const [entries, setEntries] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
+  // const [showHistory, setShowHistory] = useState(false);
   const [historicalEntries, setHistoricalEntries] = useState<HistoricalEntry[]>([]);
   const [streakInfo, setStreakInfo] = useState<StreakInfo>({
     current_streak: 0,
@@ -139,8 +139,8 @@ export default function Home() {
         
         // Format dates to compare just the date portion
         const lastEntryStr = lastEntryDate.toISOString().split('T')[0];
-        const todayStr = today.toISOString().split('T')[0];
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        // const todayStr = today.toISOString().split('T')[0];
+        // const yesterdayStr = yesterday.toISOString().split('T')[0];
 
         setStreakInfo({
           current_streak: latestEntry.streak_count,
@@ -159,61 +159,61 @@ export default function Home() {
     }
   }, [user]);
 
-  const handleSaveEntry = async (promptId: string, content: string, streakCount: number) => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
+  // const handleSaveEntry = async (promptId: string, content: string, streakCount: number) => {
+  //   if (!user) {
+  //     navigate('/login');
+  //     return;
+  //   }
 
-    try {
-      const today = new Date().toISOString().split('T')[0];
+  //   try {
+  //     const today = new Date().toISOString().split('T')[0];
       
-      // Check if entry exists for today
-      const { data: existingEntry } = await supabase
-        .from('journal_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('prompt_id', promptId)
-        .eq('entry_date', today)
-        .single();
+  //     // Check if entry exists for today
+  //     const { data: existingEntry } = await supabase
+  //       .from('journal_entries')
+  //       .select('*')
+  //       .eq('user_id', user.id)
+  //       .eq('prompt_id', promptId)
+  //       .eq('entry_date', today)
+  //       .single();
 
-      if (existingEntry) {
-        // Update existing entry
-        const { error } = await supabase
-          .from('journal_entries')
-          .update({ 
-            content,
-            streak_count: streakCount 
-          })
-          .eq('id', existingEntry.id);
+  //     if (existingEntry) {
+  //       // Update existing entry
+  //       const { error } = await supabase
+  //         .from('journal_entries')
+  //         .update({ 
+  //           content,
+  //           streak_count: streakCount 
+  //         })
+  //         .eq('id', existingEntry.id);
 
-        if (error) throw error;
-      } else {
-        // Create new entry
-        const { error } = await supabase
-          .from('journal_entries')
-          .insert([
-            {
-              user_id: user.id,
-              prompt_id: promptId,
-              content,
-              entry_date: today,
-              streak_count: streakCount
-            }
-          ]);
+  //       if (error) throw error;
+  //     } else {
+  //       // Create new entry
+  //       const { error } = await supabase
+  //         .from('journal_entries')
+  //         .insert([
+  //           {
+  //             user_id: user.id,
+  //             prompt_id: promptId,
+  //             content,
+  //             entry_date: today,
+  //             streak_count: streakCount
+  //           }
+  //         ]);
 
-        if (error) throw error;
-      }
+  //       if (error) throw error;
+  //     }
 
-      setEntries(prev => ({
-        ...prev,
-        [promptId]: content
-      }));
-    } catch (err) {
-      setError('Error saving entry');
-      console.error(err);
-    }
-  };
+  //     setEntries(prev => ({
+  //       ...prev,
+  //       [promptId]: content
+  //     }));
+  //   } catch (err) {
+  //     setError('Error saving entry');
+  //     console.error(err);
+  //   }
+  // };
 
   const handleSubmitEntry = async (promptId: string) => {
     if (!user) {

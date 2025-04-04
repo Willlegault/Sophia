@@ -4,12 +4,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+  // Card,
+  // CardContent,
+  // CardDescription,
+  // CardFooter,
+  // CardHeader,
+  // CardTitle,
 } from "@/components/ui/card";
 
 export default function Login() {
@@ -73,14 +73,14 @@ export default function Login() {
               {loading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
-          <CardFooter className="flex justify-center mt-4">
+          {/* <CardFooter className="flex justify-center mt-4"> */}
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
               <Link to="/register" className="text-blue-600 hover:underline">
                 Register
               </Link>
             </p>
-          </CardFooter>
+          {/* </CardFooter> */}
         </div>
       </div>
     </div>
