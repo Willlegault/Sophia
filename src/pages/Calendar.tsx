@@ -21,7 +21,7 @@ export default function Calendar() {
 
     useEffect(() => {
         const fetchEntries = async () => {
-            if (!user) return;
+            if (!user || !user.id) return; // Ensure user and user.id exist
 
             try {
                 const { data, error } = await supabase
@@ -35,10 +35,17 @@ export default function Calendar() {
                             description
                         )
                     `)
-                    .eq('user_id', user.id);
+                    .eq('user_id', user.id); // Access user.id safely
 
                 if (error) throw error;
-                setEntries(data || []);
+
+                // Transform data to match JournalEntry type
+                const transformedData = (data || []).map(entry => ({
+                    ...entry,
+                    prompt: Array.isArray(entry.prompt) ? entry.prompt[0] : entry.prompt,
+                }));
+
+                setEntries(transformedData);
             } catch (err) {
                 console.error('Error fetching entries:', err);
             }
