@@ -31,9 +31,7 @@ function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      {/* TODO: Remove this test route before deployment - use for testing dashboard without authentication */}
-      <Route path="/testdashboard" element={<Dashboard />} />
+      <Route path="/insights" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
     </Routes>
   );

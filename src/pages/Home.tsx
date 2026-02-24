@@ -11,10 +11,19 @@ interface Prompt {
   prompt_type: string;
 }
 
+const MOOD_OPTIONS = [
+  { value: 1, emoji: '😔', label: 'Very low' },
+  { value: 2, emoji: '😕', label: 'Low' },
+  { value: 3, emoji: '😐', label: 'Neutral' },
+  { value: 4, emoji: '🙂', label: 'Good' },
+  { value: 5, emoji: '😊', label: 'Great' },
+];
+
 interface JournalEntry {
   id: string;
   content: string;
   prompt_id: string;
+  mood?: number;
 }
 
 interface HistoricalEntry extends JournalEntry {
@@ -44,6 +53,7 @@ export default function Home() {
     last_entry_date: null
   });
   const [selectedEntry, setSelectedEntry] = useState<HistoricalEntry | null>(null);
+  const [moods, setMoods] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<HistoricalEntry[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -96,12 +106,15 @@ export default function Home() {
 
           if (entriesError) throw entriesError;
 
-          // Update entries state with today's entries
+          // Update entries and moods state with today's entries
           const entriesMap: Record<string, string> = {};
+          const moodsMap: Record<string, number> = {};
           entriesData?.forEach((entry: JournalEntry) => {
             entriesMap[entry.prompt_id] = entry.content;
+            if (entry.mood) moodsMap[entry.prompt_id] = entry.mood;
           });
           setEntries(entriesMap);
+          setMoods(moodsMap);
         }
       } catch (err) {
         setError('Error fetching data');
@@ -130,7 +143,7 @@ export default function Home() {
         .eq('user_id', user.id)
         .order('entry_date', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (latestError) throw latestError;
 
@@ -245,7 +258,8 @@ export default function Home() {
           .from('journal_entries')
           .update({
             content: content.trim(),
-            streak_count: existingEntry.streak_count // Keep existing streak
+            streak_count: existingEntry.streak_count,
+            mood: moods[promptId] || null,
           })
           .eq('id', existingEntry.id)
           .select()
@@ -261,7 +275,8 @@ export default function Home() {
             prompt_id: promptId,
             content: content.trim(),
             entry_date: today,
-            streak_count: newStreakCount // Use new streak count for new entries
+            streak_count: newStreakCount,
+            mood: moods[promptId] || null,
           }])
           .select()
           .single();
@@ -284,6 +299,7 @@ export default function Home() {
           content: content.trim(),
           prompt_id: promptId,
           entry_date: today,
+          mood: moods[promptId] || undefined,
           prompt: {
             title: prompt?.title || '',
             description: prompt?.description || ''
@@ -335,8 +351,16 @@ export default function Home() {
         <div className="bg-gray-50 p-4 rounded-lg">
           <p className="text-gray-800 whitespace-pre-wrap">{entry.content}</p>
         </div>
-        <div className="mt-4 text-sm text-gray-500 text-right">
-          {new Date(entry.entry_date).toLocaleDateString()}
+        <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
+          <span>
+            {entry.mood && (
+              <span title={MOOD_OPTIONS.find(m => m.value === entry.mood)?.label}>
+                {MOOD_OPTIONS.find(m => m.value === entry.mood)?.emoji}
+                <span className="ml-1">{MOOD_OPTIONS.find(m => m.value === entry.mood)?.label}</span>
+              </span>
+            )}
+          </span>
+          <span>{new Date(entry.entry_date).toLocaleDateString()}</span>
         </div>
       </div>
     );
@@ -400,9 +424,14 @@ export default function Home() {
                       >
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-medium text-gray-800">{entry.prompt.title}</h3>
-                          <span className="text-sm text-gray-500">
-                            {new Date(entry.entry_date).toLocaleDateString()}
-                          </span>
+                          <div className="flex items-center gap-1 text-sm text-gray-500">
+                            {entry.mood && (
+                              <span title={MOOD_OPTIONS.find(m => m.value === entry.mood)?.label}>
+                                {MOOD_OPTIONS.find(m => m.value === entry.mood)?.emoji}
+                              </span>
+                            )}
+                            <span>{new Date(entry.entry_date).toLocaleDateString()}</span>
+                          </div>
                         </div>
                         <p className="text-sm text-gray-600 line-clamp-2">{entry.content}</p>
                       </div>
@@ -462,6 +491,24 @@ export default function Home() {
                     value={entries[prompt.id] || ''}
                     onChange={(e) => handleInputChange(prompt.id, e.target.value)}
                   />
+                  <div className="flex items-center gap-1 mb-4">
+                    <span className="text-sm text-gray-500 mr-1">Mood:</span>
+                    {MOOD_OPTIONS.map(({ value, emoji, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        title={label}
+                        onClick={() => setMoods(prev => ({ ...prev, [prompt.id]: value }))}
+                        className={`text-xl transition-transform hover:scale-125 ${
+                          moods[prompt.id] === value
+                            ? 'scale-125 opacity-100'
+                            : 'opacity-40 hover:opacity-70'
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex justify-end">
                     <button
                       onClick={() => handleSubmitEntry(prompt.id)}

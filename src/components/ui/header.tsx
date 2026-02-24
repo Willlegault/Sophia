@@ -62,11 +62,11 @@ export default function Header() {
                     </button>
                     
                     {user ? (
-                        <button 
-                            onClick={() => navigate('/dashboard')}
-                            className={linkStyle('/dashboard')}
+                        <button
+                            onClick={() => navigate('/insights')}
+                            className={linkStyle('/insights')}
                         >
-                            Dashboard
+                            Insights
                         </button>
                     ) : (
                         <div className="flex items-center space-x-4">
