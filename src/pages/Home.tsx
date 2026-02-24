@@ -19,6 +19,29 @@ const MOOD_OPTIONS = [
   { value: 5, emoji: '😊', label: 'Great' },
 ];
 
+const PHILOSOPHICAL_QUOTES = [
+  { text: "The unexamined life is not worth living.", author: "Socrates" },
+  { text: "You have power over your mind — not outside events. Realize this, and you will find strength.", author: "Marcus Aurelius" },
+  { text: "Between stimulus and response there is a space. In that space is our power to choose our response.", author: "Viktor Frankl" },
+  { text: "We suffer more in imagination than in reality.", author: "Seneca" },
+  { text: "Life is not a problem to be solved, but a reality to be experienced.", author: "Søren Kierkegaard" },
+  { text: "What lies behind us and what lies before us are tiny matters compared to what lies within us.", author: "Ralph Waldo Emerson" },
+  { text: "Your task is not to seek for love, but merely to seek and find all the barriers within yourself that you have built against it.", author: "Rumi" },
+  { text: "Not how long, but how well you have lived is the main thing.", author: "Seneca" },
+  { text: "The present moment is the only moment available to us, and it is the door to all moments.", author: "Thich Nhat Hanh" },
+  { text: "To thine own self be true.", author: "William Shakespeare" },
+  { text: "Knowing yourself is the beginning of all wisdom.", author: "Aristotle" },
+  { text: "He who has a why to live can bear almost any how.", author: "Friedrich Nietzsche" },
+  { text: "The soul that sees beauty may sometimes walk alone.", author: "Johann Wolfgang von Goethe" },
+  { text: "Happiness is not something ready-made. It comes from your own actions.", author: "Dalai Lama XIV" },
+  { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein" },
+  { text: "You yourself, as much as anybody in the entire universe, deserve your love and affection.", author: "Buddha" },
+  { text: "The only way out is through.", author: "Robert Frost" },
+  { text: "Everything can be taken from a man but one thing: to choose one's attitude in any given set of circumstances.", author: "Viktor Frankl" },
+  { text: "Wherever you are, be all there.", author: "Jim Elliot" },
+  { text: "Almost everything will work again if you unplug it for a few minutes — including you.", author: "Anne Lamott" },
+];
+
 interface JournalEntry {
   id: string;
   content: string;
@@ -324,6 +347,30 @@ export default function Home() {
     }
   };
 
+  const handleUpdateEntry = async (id: string, content: string, mood: number | undefined) => {
+    try {
+      const { error } = await supabase
+        .from('journal_entries')
+        .update({ content: content.trim(), mood: mood || null })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      const applyUpdate = (e: HistoricalEntry) =>
+        e.id === id ? { ...e, content: content.trim(), mood } : e;
+
+      setHistoricalEntries(prev => prev.map(applyUpdate));
+      setSearchResults(prev => prev.map(applyUpdate));
+      setSelectedEntry(prev => (prev?.id === id ? { ...prev, content: content.trim(), mood } : prev));
+
+      setError('Entry updated successfully!');
+      setTimeout(() => setError(null), 3000);
+    } catch (err) {
+      console.error('Error updating entry:', err);
+      setError('Error updating entry');
+    }
+  };
+
   // Modify to handle local state changes without saving
   const handleInputChange = (promptId: string, content: string) => {
     setEntries(prev => ({
@@ -332,36 +379,107 @@ export default function Home() {
     }));
   };
 
-  const EntryDisplay = ({ entry, onBack }: { 
-    entry: HistoricalEntry; 
+  const EntryDisplay = ({ entry, onBack, onUpdate }: {
+    entry: HistoricalEntry;
     onBack: () => void;
+    onUpdate: (id: string, content: string, mood: number | undefined) => Promise<void>;
   }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(entry.content);
+    const [editMood, setEditMood] = useState<number | undefined>(entry.mood);
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+      if (!editContent.trim()) return;
+      setSaving(true);
+      await onUpdate(entry.id, editContent, editMood);
+      setSaving(false);
+      setIsEditing(false);
+    };
+
     return (
       <div className="bg-white rounded-lg shadow-lg p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-semibold text-[#5E503F]">{entry.prompt.title}</h2>
-          <button
-            onClick={onBack}
-            className="bg-[#834D4D] text-white px-4 py-2 rounded hover:bg-[#733D3D] transition-colors"
-          >
-            Back to Journal
-          </button>
-        </div>
-        <p className="text-gray-600 mb-6">{entry.prompt.description}</p>
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <p className="text-gray-800 whitespace-pre-wrap">{entry.content}</p>
-        </div>
-        <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
-          <span>
-            {entry.mood && (
-              <span title={MOOD_OPTIONS.find(m => m.value === entry.mood)?.label}>
-                {MOOD_OPTIONS.find(m => m.value === entry.mood)?.emoji}
-                <span className="ml-1">{MOOD_OPTIONS.find(m => m.value === entry.mood)?.label}</span>
-              </span>
+          <div className="flex gap-2">
+            {!isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="bg-[#5E503F] text-white px-4 py-2 rounded hover:bg-[#4E4030] transition-colors"
+              >
+                Edit
+              </button>
             )}
-          </span>
-          <span>{new Date(entry.entry_date).toLocaleDateString()}</span>
+            <button
+              onClick={onBack}
+              className="bg-[#834D4D] text-white px-4 py-2 rounded hover:bg-[#733D3D] transition-colors"
+            >
+              Back to Journal
+            </button>
+          </div>
         </div>
+
+        <p className="text-gray-600 mb-4">{entry.prompt.description}</p>
+
+        {isEditing ? (
+          <>
+            <textarea
+              className="w-full p-3 border rounded-lg mb-4"
+              rows={8}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              autoFocus
+            />
+            <div className="flex items-center gap-1 mb-4">
+              <span className="text-sm text-gray-500 mr-1">Mood:</span>
+              {MOOD_OPTIONS.map(({ value, emoji, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  title={label}
+                  onClick={() => setEditMood(value)}
+                  className={`text-xl transition-transform hover:scale-125 ${
+                    editMood === value ? 'scale-125 opacity-100' : 'opacity-40 hover:opacity-70'
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setIsEditing(false); setEditContent(entry.content); setEditMood(entry.mood); }}
+                className="px-4 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !editContent.trim()}
+                className="bg-[#834D4D] text-white px-4 py-2 rounded hover:bg-[#733D3D] transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-gray-800 whitespace-pre-wrap">{entry.content}</p>
+            </div>
+            <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
+              <span>
+                {entry.mood && (
+                  <span title={MOOD_OPTIONS.find(m => m.value === entry.mood)?.label}>
+                    {MOOD_OPTIONS.find(m => m.value === entry.mood)?.emoji}
+                    <span className="ml-1">{MOOD_OPTIONS.find(m => m.value === entry.mood)?.label}</span>
+                  </span>
+                )}
+              </span>
+              <span>{new Date(entry.entry_date).toLocaleDateString()}</span>
+            </div>
+          </>
+        )}
       </div>
     );
   };
@@ -459,7 +577,7 @@ export default function Home() {
             </h2>
             {error && (
               <div className={`inline-block px-4 py-2 rounded-lg shadow-md transition-opacity duration-300 ${
-                error === 'Entry saved successfully!' 
+                error === 'Entry saved successfully!' || error === 'Entry updated successfully!'
                   ? 'bg-white border border-gray-200 text-gray-700'
                   : 'bg-red-100 border border-red-400 text-red-700'
               }`}>
@@ -468,12 +586,26 @@ export default function Home() {
             )}
           </div>
           
+          {(() => {
+            const dayOfYear = Math.floor(
+              (new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
+            );
+            const quote = PHILOSOPHICAL_QUOTES[dayOfYear % PHILOSOPHICAL_QUOTES.length];
+            return !selectedEntry ? (
+              <div className="bg-white/80 rounded-lg p-5 mb-6 border-l-4 border-[#834D4D]">
+                <p className="text-gray-700 italic leading-relaxed">"{quote.text}"</p>
+                <p className="text-[#5E503F] text-sm font-medium mt-2">— {quote.author}</p>
+              </div>
+            ) : null;
+          })()}
+
           {loading ? (
             <div className="text-white">Loading prompts...</div>
           ) : selectedEntry ? (
-            <EntryDisplay 
-              entry={selectedEntry} 
-              onBack={() => setSelectedEntry(null)} 
+            <EntryDisplay
+              entry={selectedEntry}
+              onBack={() => setSelectedEntry(null)}
+              onUpdate={handleUpdateEntry}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
