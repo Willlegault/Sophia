@@ -44,6 +44,9 @@ export default function Home() {
     last_entry_date: null
   });
   const [selectedEntry, setSelectedEntry] = useState<HistoricalEntry | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<HistoricalEntry[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const fetchHistory = async () => {
     if (!user) return;
@@ -158,6 +161,39 @@ export default function Home() {
       calculateStreak();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!searchQuery.trim() || !user) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const { data, error } = await supabase
+          .from('journal_entries')
+          .select(`
+            *,
+            prompt:prompts (
+              title,
+              description
+            )
+          `)
+          .eq('user_id', user.id)
+          .ilike('content', `%${searchQuery}%`)
+          .order('entry_date', { ascending: false })
+          .limit(20);
+
+        if (error) throw error;
+        setSearchResults(data || []);
+      } catch (err) {
+        console.error('Error searching entries:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, user]);
 
   const handleSubmitEntry = async (promptId: string) => {
     if (!user) {
@@ -312,41 +348,73 @@ export default function Home() {
       <div className="flex">
         {/* History Sidebar */}
         <div className="w-80 bg-white h-[calc(100vh-4rem)] overflow-y-auto shadow-lg">
-          <div className="p-4 border-b flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">Journal History</h2>
-            <div className="flex items-center bg-[#834D4D] text-white px-3 py-1 rounded">
-              <span className="text-lg font-bold">{streakInfo.current_streak}</span>
-              <span className="ml-1 text-sm">day streak</span>
+          <div className="border-b">
+            <div className="p-4 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">Journal History</h2>
+              <div className="flex items-center bg-[#834D4D] text-white px-3 py-1 rounded">
+                <span className="text-lg font-bold">{streakInfo.current_streak}</span>
+                <span className="ml-1 text-sm">day streak</span>
+              </div>
             </div>
+            {user && (
+              <div className="px-4 pb-3">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search entries..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-1 focus:ring-[#834D4D]"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl leading-none"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-          
+
           {user ? (
-            historicalEntries.length > 0 ? (
-              <div className="divide-y">
-                {historicalEntries.map((entry) => (
-                  <div key={entry.id} 
-                    className="p-4 hover:bg-gray-50 cursor-pointer" 
-                    onClick={() => setSelectedEntry(entry)}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-medium text-gray-800">
-                        {entry.prompt.title}
-                      </h3>
-                      <span className="text-sm text-gray-500">
-                        {new Date(entry.entry_date).toLocaleDateString()}
-                      </span>
+            isSearching ? (
+              <div className="p-4 text-gray-500 text-center text-sm">Searching...</div>
+            ) : (() => {
+              const displayedEntries = searchQuery.trim() ? searchResults : historicalEntries;
+              return displayedEntries.length > 0 ? (
+                <div>
+                  {searchQuery.trim() && (
+                    <div className="px-4 py-2 text-xs text-gray-500 border-b">
+                      {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"
                     </div>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {entry.content}
-                    </p>
+                  )}
+                  <div className="divide-y">
+                    {displayedEntries.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="p-4 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setSelectedEntry(entry)}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-medium text-gray-800">{entry.prompt.title}</h3>
+                          <span className="text-sm text-gray-500">
+                            {new Date(entry.entry_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 line-clamp-2">{entry.content}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-4 text-gray-500 text-center">
-                No journal entries yet
-              </div>
-            )
+                </div>
+              ) : (
+                <div className="p-4 text-gray-500 text-center">
+                  {searchQuery.trim() ? `No entries found for "${searchQuery}"` : 'No journal entries yet'}
+                </div>
+              );
+            })()
           ) : (
             <div className="p-4 text-gray-500 text-center">
               Please login to view your journal history
